@@ -42,10 +42,12 @@ TGT_APP 	= rpcd
 OBJS_APP    	= ${TGT_APP}.o
 OBJS_APP   	+= engine.o ext/rpcd_common.o
 
-CFLAGS	:= -g -Wall -fPIC
-CFLAGS	+= -Werror
-CFLAGS	+= -I./
+CFLAGS	:= -g -Wall -Werror -fPIC
+CFLAGS	+= -I$(OUTPUT)/include -I./
+
 LDFLAGS	:= -lpthread
+LDFLAGS	+= -lgcc_s -lc
+LDFLAGS += -L$(OUTPUT)/lib
 LDFLAGS	+= -llog
 LDFLAGS	+= -lgevent
 LDFLAGS	+= -lskt
@@ -67,11 +69,12 @@ all: $(TGT)
 $(TGT_APP): $(OBJS)
 	$(CC_V) -o $@ $^ $(LDFLAGS)
 
-install:
-	$(CP_V) -f $(TGT_APP) ${OUTPUT}/bin
 clean:
 	$(RM_V) -f $(OBJS)
 	$(RM_V) -f $(TGT)
+
+install:
+	$(CP_V) -f $(TGT_APP) ${OUTPUT}/bin
 
 uninstall:
 	$(RM_V) -f ${OUTPUT}/bin/$(TGT_APP)
