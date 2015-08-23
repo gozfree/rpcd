@@ -14,7 +14,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-#include <liblog.h>
+#include <libglog.h>
 #include <libgevent.h>
 #include <libdict.h>
 #include <libskt.h>
