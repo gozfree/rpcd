@@ -226,7 +226,7 @@ int main(int argc, char **argv)
     if (argc == 2) {
         if (!strcmp(argv[1], "-d")) {
             daemon(0, 0);
-            log_init(LOG_FILE, NULL);
+            log_init(LOG_RSYSLOG, "local2");
         } else {
             port = atoi(argv[1]);
         }

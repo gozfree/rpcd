@@ -1,41 +1,31 @@
 
-OUTPUT		?= /usr/local
-
-ARCH		?=x86
+#ARCH: linux/pi/android/ios/
+ARCH		?= linux
 CROSS_PREFIX	?=
+OUTPUT		?= /usr/local
+BUILD_DIR	:= $(shell pwd)/../build/
+ARCH_INC	:= $(BUILD_DIR)/$(ARCH).inc
+COLOR_INC	:= $(BUILD_DIR)/color.inc
 
-ifeq ($(ARCH), pi)
-	CROSS_PREFIX=arm-linux-gnueabihf-
+ifeq ($(ARCH_INC), $(wildcard $(ARCH_INC)))
+include $(ARCH_INC)
 endif
 
-CC	= ${CROSS_PREFIX}gcc
-CXX	= ${CROSS_PREFIX}g++
-LD	= ${CROSS_PREFIX}ld
-AR	= ${CROSS_PREFIX}ar
+CC	= $(CROSS_PREFIX)gcc
+CXX	= $(CROSS_PREFIX)g++
+LD	= $(CROSS_PREFIX)ld
+AR	= $(CROSS_PREFIX)ar
 
-COLOR	= 1
-CC_V	= $(CC_$(COLOR))
-CXX_V	= $(CXX_$(COLOR))
-LD_V	= $(LD_$(COLOR))
-AR_V	= $(AR_$(COLOR))
-CP_V	= $(CP_$(COLOR))
-RM_V	= $(RM_$(COLOR))
-CYAN	= "\033[36m"
-GREEN	= "\033[1;32m"
-NC	= "\033[0m"
-AA	= "\033[33m"
-CC_0	= $(CC)
-CC_1	= @printf '\t%b\t%b\n' $(CYAN)CC$(NC) $(CYAN)$@$(NC); $(CC)
-CXX_0	= $(CXX)
-CXX_1	= @printf '\t%b\t%b\n' $(CYAN)CXX$(NC) $(CYAN)$@$(NC); $(CXX)
-LD_0	= $(LD)
-LD_1	= @printf '\t%b\t%b\n' $(GREEN)LD$(NC) $(GREEN)$@$(NC); $(LD)
-AR_0	= $(AR)
-AR_1	= @printf '\t%b\t%b\n' $(AA)AR$(NC) $(AA)$@$(NC); $(AR)
-CP_0	= cp
-CP_1	= @printf '\t%b\n' $(AA)install$(NC); cp
-RM_0	= rm
-RM_1	= @printf '\t%b\n' $(AA)clean$(NC); rm
+ifeq ($(COLOR_INC), $(wildcard $(COLOR_INC)))
+include $(COLOR_INC)
+else
+CC_V	= $(CC)
+CXX_V	= $(CXX)
+LD_V	= $(LD)
+AR_V	= $(AR)
+CP_V	= $(CP)
+RM_V	= $(RM)
+endif
 
 ########
 TGT_APP 	= rpcd
@@ -45,7 +35,8 @@ OBJS_APP   	+= engine.o ext/rpcd_common.o
 CFLAGS	:= -g -Wall -Werror -fPIC
 CFLAGS	+= -I$(OUTPUT)/include -I./
 
-LDFLAGS	:= -lpthread
+LDFLAGS	:= $($(ARCH)_LDFLAGS)
+LDFLAGS	+= -pthread
 LDFLAGS	+= -lgcc_s -lc
 LDFLAGS += -L$(OUTPUT)/lib
 LDFLAGS	+= -lglog
