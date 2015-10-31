@@ -23,6 +23,8 @@
 #include <librpc.h>
 #include "rpcd_common.h"
 #include "rpcd.h"
+#include "librpc_stub.h"
+
 extern struct rpcd *_rpcd;
 static int on_get_connect_list(struct rpc *r, void *arg, int len)
 {
@@ -52,6 +54,16 @@ static int on_test(struct rpc *r, void *arg, int len)
     return 0;
 }
 
+static int on_shell_help(struct rpc *r, void *arg, int len)
+{
+    char buf[1024];
+    char *cmd = (char *)arg;
+    logi("on_shell_help cmd = %s\n", cmd);
+    system_with_result(cmd, buf, sizeof(buf));
+    rpc_send(r, buf, strlen(buf));
+    return 0;
+}
+
 static int on_peer_post_msg(struct rpc *r, void *arg, int len)
 {
     char *valfd = (char *)dict_get(_rpcd->dict_uuid2fd, r->packet.header.uuid_dst, NULL);
@@ -69,6 +81,7 @@ BEGIN_MSG_MAP(BASIC_RPC_API)
 MSG_ACTION(RPC_TEST, on_test)
 MSG_ACTION(RPC_GET_CONNECT_LIST, on_get_connect_list)
 MSG_ACTION(RPC_PEER_POST_MSG, on_peer_post_msg)
+MSG_ACTION(RPC_SHELL_HELP, on_shell_help)
 END_MSG_MAP()
 
 int rpcd_group_register()

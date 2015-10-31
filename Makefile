@@ -39,6 +39,7 @@ LDFLAGS	:= $($(ARCH)_LDFLAGS)
 LDFLAGS	+= -pthread
 LDFLAGS	+= -lgcc_s -lc
 LDFLAGS += -L$(OUTPUT)/lib
+LDFLAGS	+= -lgzf
 LDFLAGS	+= -lglog
 LDFLAGS	+= -lgevent
 LDFLAGS	+= -lskt
