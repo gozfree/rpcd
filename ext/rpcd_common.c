@@ -14,7 +14,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-#include <libglog.h>
+#include <liblog.h>
 #include <libgevent.h>
 #include <libdict.h>
 #include <libskt.h>
@@ -59,6 +59,7 @@ static int on_shell_help(struct rpc *r, void *arg, int len)
     char buf[1024];
     char *cmd = (char *)arg;
     logi("on_shell_help cmd = %s\n", cmd);
+    memset(buf, 0, sizeof(buf));
     system_with_result(cmd, buf, sizeof(buf));
     rpc_send(r, buf, strlen(buf));
     return 0;

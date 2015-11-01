@@ -14,7 +14,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-#include <libglog.h>
+#include <liblog.h>
 #include <libgevent.h>
 #include <libdict.h>
 #include <libskt.h>
@@ -168,7 +168,7 @@ void on_connect(int fd, void *arg)
 int rpcd_init(uint16_t port)
 {
     int fd;
-    fd = skt_tcp_bind_listen(NULL, port, 0);
+    fd = skt_tcp_bind_listen(NULL, port, 1);
     if (fd == -1) {
         return -1;
     }
