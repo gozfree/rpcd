@@ -106,6 +106,7 @@ void rpcd_connect_del(struct rpcd *rpcd, int fd, char *uuid)
     snprintf(key, sizeof(key), "%08x", fd);
     dict_del(rpcd->dict_fd2rpc, key);
     dict_del(rpcd->dict_uuid2fd, uuid);
+    logi("delete connection uuid: %s\n", uuid);
 }
 
 struct rpc *rpc_connect_create(struct rpcd *rpcd, int fd, uint32_t ip, uint16_t port)
@@ -141,6 +142,7 @@ struct rpc *rpc_connect_create(struct rpcd *rpcd, int fd, uint32_t ip, uint16_t 
 void rpc_connect_destroy(struct rpcd *rpcd, struct rpc *r)
 {
     if (!rpcd || !r) {
+        loge("invalid paramets!\n");
         return;
     }
     int fd = r->fd;
@@ -170,6 +172,11 @@ int rpcd_init(uint16_t port)
     int fd;
     fd = skt_tcp_bind_listen(NULL, port, 1);
     if (fd == -1) {
+        loge("skt_tcp_bind_listen port:%d failed!\n", port);
+        return -1;
+    }
+    if (0 > skt_set_tcp_keepalive(fd, 1)) {
+        loge("skt_set_tcp_keepalive failed!\n");
         return -1;
     }
     logi("rpcd listen port = %d\n", port);
@@ -177,6 +184,7 @@ int rpcd_init(uint16_t port)
     _rpcd->listen_fd = fd;
     _rpcd->evbase = gevent_base_create();
     if (!_rpcd->evbase) {
+        loge("gevent_base_create failed!\n");
         return -1;
     }
     struct gevent *e = gevent_create(fd, on_connect, NULL, on_error, (void *)_rpcd);
