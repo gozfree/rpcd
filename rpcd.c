@@ -36,10 +36,10 @@ static int do_process_msg(struct rpc *r, void *buf, size_t len)
     char uuid_str[4];
     int ret;
     msg_handler_t msg_handler;
-    struct rpc_header *h = &r->resp_pkt.header;
+    struct rpc_header *h = &r->recv_pkt.header;
     int msg_id = rpc_packet_parse(r);
+    logi("msg_id = %08x\n", msg_id);
 
-    logi("msg_id = 0x%08x\n", msg_id);
     if (find_msg_handler(msg_id, &msg_handler) == 0) {
         msg_handler.cb(r, buf, len);
     } else {
@@ -67,18 +67,14 @@ void on_recv(int fd, void *arg)
         loge("dict_get failed: key=%s", key);
         return;
     }
-    //logi("on_recv fd = %d dict_get: key=%s, r->fd=%d\n", fd, key, r->fd);
     buf = rpc_recv_buf(r);
     if (!buf) {
-        //loge("peer connect closed\n");
+        logd("on_disconnect fd = %d\n", r->fd);
         rpc_connect_destroy(_rpcd, r);
         return;
     }
     do_process_msg(r, buf->iov_base, buf->iov_len);
     r->fd = fd;//must be reset
-    //dump_buffer(buf->addr, buf->len);
-    //dump_packet(&r->packet);
-
     free(buf->iov_base);
     free(buf);
 }
@@ -94,26 +90,30 @@ int create_uuid(char *uuid, int len, int fd, uint32_t ip, uint16_t port)
     return 0;
 }
 
-int rpcd_connect_add(struct rpcd *rpcd, struct rpc *r, int fd, char *uuid)
+int rpcd_connect_add(struct rpcd *rpcd, struct rpc *r, int fd, uint32_t uuid)
 {
-    char key[9];
+    char fd_str[9];
+    char uuid_str[9];
     char *fdval = (char *)calloc(1, 9);
-    snprintf(key, sizeof(key), "%08x", fd);
+    snprintf(fd_str, sizeof(fd_str), "%08x", fd);
+    snprintf(uuid_str, sizeof(uuid_str), "%08x", uuid);
     snprintf(fdval, 9, "%08x", fd);
-    dict_add(rpcd->dict_fd2rpc, key, (char *)r);
-    dict_add(rpcd->dict_uuid2fd, uuid, fdval);
+    dict_add(rpcd->dict_fd2rpc, fd_str, (char *)r);
+    dict_add(rpcd->dict_uuid2fd, uuid_str, fdval);
+    logd("add connection fd:%s, uuid:%s\n", fd_str, uuid_str);
     return 0;
 }
 
-void rpcd_connect_del(struct rpcd *rpcd, int fd, uint32_t uuid)
+int rpcd_connect_del(struct rpcd *rpcd, int fd, uint32_t uuid)
 {
-    char uuid_str[4];
-    char key[9];
-    snprintf(key, sizeof(key), "%08x", fd);
-    snprintf(uuid_str, sizeof(uuid_str), "%x", uuid);
-    dict_del(rpcd->dict_fd2rpc, key);
+    char uuid_str[9];
+    char fd_str[9];
+    snprintf(fd_str, sizeof(fd_str), "%08x", fd);
+    snprintf(uuid_str, sizeof(uuid_str), "%08x", uuid);
+    dict_del(rpcd->dict_fd2rpc, fd_str);
     dict_del(rpcd->dict_uuid2fd, uuid_str);
-    logi("delete connection uuid: %s\n", uuid_str);
+    logd("delete connection fd:%s, uuid:%s\n", fd_str, uuid_str);
+    return 0;
 }
 
 struct rpc *rpc_connect_create(struct rpcd *rpcd,
@@ -138,21 +138,18 @@ struct rpc *rpc_connect_create(struct rpcd *rpcd,
     }
     r->ev = e;
 
-    struct timeval cur;
-    r->packet.header.uuid_src = uuid_hash;
-    r->packet.header.uuid_dst = uuid_hash;
-    gettimeofday(&cur, NULL);
-    r->packet.header.time_stamp = cur.tv_sec * 1000000L + cur.tv_usec;
-    r->packet.header.msg_id = 0;
-    r->packet.header.payload_len = sizeof(uuid_hash);
-    r->packet.payload = &uuid_hash;
-    ret = rpc_send(r, r->packet.payload, r->packet.header.payload_len);
-    if (ret != r->packet.header.payload_len) {
-        loge("rpc_send failed, ret = %d, MAX_UUID_LEN = %d\n", ret, MAX_UUID_LEN);
+    r->send_pkt.header.uuid_src = uuid_hash;
+    r->send_pkt.header.uuid_dst = uuid_hash;
+    r->send_pkt.header.msg_id = 0;
+    r->send_pkt.header.payload_len = sizeof(uuid_hash);
+    r->send_pkt.payload = &uuid_hash;
+    ret = rpc_send(r, r->send_pkt.payload, r->send_pkt.header.payload_len);
+    if (ret == -1) {
+        loge("rpc_send failed\n");
     }
-    rpcd_connect_add(rpcd, r, fd, uuid);
+    rpcd_connect_add(rpcd, r, fd, uuid_hash);
     skt_addr_ntop(str_ip, ip);
-    logi("on_connect fd = %d, remote_addr = %s:%d, uuid_hash=0x%08x\n",
+    logd("on_connect fd = %d, remote_addr = %s:%d, uuid=0x%08x\n",
                     fd, str_ip, port, uuid_hash);
 
     return r;
@@ -165,7 +162,7 @@ void rpc_connect_destroy(struct rpcd *rpcd, struct rpc *r)
         return;
     }
     int fd = r->fd;
-    uint32_t uuid = r->packet.header.uuid_src;
+    uint32_t uuid = r->send_pkt.header.uuid_src;
     struct gevent *e = r->ev;
     rpcd_connect_del(rpcd, fd, uuid);
     gevent_del(rpcd->evbase, e);
@@ -215,7 +212,6 @@ int rpcd_init(uint16_t port)
     _rpcd->dict_fd2rpc = dict_new();
     _rpcd->dict_uuid2fd = dict_new();
     wq_pool_init();
-    //REGISTER_MSG_MAP(BASIC_RPC_API);
     rpcd_group_register();
     return 0;
 }

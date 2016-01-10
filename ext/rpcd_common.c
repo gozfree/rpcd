@@ -34,25 +34,20 @@ static int on_get_connect_list(struct rpc *r, void *arg, int len)
     int num = 0;
     struct iobuf *buf = CALLOC(1, struct iobuf);
     key_list *tmp, *uuids;
-    logi("on_get_connect_list, len = %d\n", len);
     dict_get_key_list(_rpcd->dict_uuid2fd, &uuids);
     for (num = 0, tmp = uuids; tmp; tmp = tmp->next, ++num) {
     }
     buf->len = num * MAX_UUID_LEN;
     buf->addr = calloc(1, buf->len);
-#if 1
     for (ptr = buf->addr, tmp = uuids; tmp; tmp = tmp->next, ++num) {
         logi("uuid list: %s\n", (tmp->key));
         len = MAX_UUID_LEN;
         memcpy(ptr, tmp->key, len);
         ptr += len;
     }
-#endif
-//    sprintf(buf->addr, "%s", "helloworld");
-    r->packet.header.msg_id = RPC_GET_CONNECT_LIST;
-    r->packet.header.payload_len = buf->len;
-    logi("msg_id = 0x%08x\n", r->packet.header.msg_id);
-    print_packet(&r->packet);
+    r->send_pkt.header.msg_id = RPC_GET_CONNECT_LIST;
+    r->send_pkt.header.payload_len = buf->len;
+    logi("rpc_send len = %d, buf = %s\n", buf->len, buf->addr);
     rpc_send(r, buf->addr, buf->len);
     return 0;
 }
@@ -70,22 +65,28 @@ static int on_shell_help(struct rpc *r, void *arg, int len)
     logi("on_shell_help cmd = %s\n", cmd);
     memset(buf, 0, sizeof(buf));
     system_with_result(cmd, buf, sizeof(buf));
+    logi("send len = %d, buf: %s\n", strlen(buf), buf);
     rpc_send(r, buf, strlen(buf));
     return 0;
 }
 
 static int on_peer_post_msg(struct rpc *r, void *arg, int len)
 {
-    char uuid_str[4];
-    snprintf(uuid_str, sizeof(uuid_str), "%x", r->packet.header.uuid_dst);
-    char *valfd = (char *)dict_get(_rpcd->dict_uuid2fd, uuid_str, NULL);
+    char uuid_src[9];
+    char uuid_dst[9];
+    snprintf(uuid_src, sizeof(uuid_src), "%x", r->recv_pkt.header.uuid_src);
+    snprintf(uuid_dst, sizeof(uuid_dst), "%x", r->recv_pkt.header.uuid_dst);
+
+    logi("post msg from %s to %s\n", uuid_src, uuid_dst);
+    char *valfd = (char *)dict_get(_rpcd->dict_uuid2fd, uuid_dst, NULL);
     if (!valfd) {
-        loge("dict_get failed: key=%s\n", r->packet.header.uuid_dst);
+        loge("dict_get failed: key=%08x\n", r->send_pkt.header.uuid_dst);
         return -1;
     }
     int dst_fd = strtol(valfd, NULL, 16);
     //printf("dst_fd = %d\n", dst_fd);
     r->fd = dst_fd;
+    r->send_pkt.header.msg_id = RPC_PEER_POST_MSG;
     return rpc_send(r, arg, len);
 }
 
