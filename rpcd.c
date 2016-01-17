@@ -31,17 +31,41 @@
 struct rpcd *_rpcd;
 void rpc_connect_destroy(struct rpcd *rpcd, struct rpc *r);
 
+struct wq_arg {
+    msg_handler_t handler;
+    struct rpc r;
+    void *buf;
+    size_t len;
+
+};
+
+static void process_wq(void *arg)
+{
+    struct wq_arg *wq = (struct wq_arg *)arg;
+    if (&wq->handler) {
+        wq->handler.cb(&wq->r, wq->buf, wq->len);
+    }
+}
+
 static int do_process_msg(struct rpc *r, void *buf, size_t len)
 {
     char uuid_str[4];
     int ret;
-    msg_handler_t msg_handler;
+    msg_handler_t *msg_handler;
     struct rpc_header *h = &r->recv_pkt.header;
     int msg_id = rpc_packet_parse(r);
     logi("msg_id = %08x\n", msg_id);
 
-    if (find_msg_handler(msg_id, &msg_handler) == 0) {
-        msg_handler.cb(r, buf, len);
+    msg_handler = find_msg_handler(msg_id);
+    if (msg_handler) {
+        struct wq_arg *arg = CALLOC(1, struct wq_arg);
+        memcpy(&arg->handler, msg_handler, sizeof(msg_handler_t));
+        memcpy(&arg->r, r, sizeof(struct rpc));
+        arg->buf = calloc(1, len);
+        memcpy(arg->buf, buf, len);
+        arg->len = len;
+        wq_task_add(_rpcd->wq, process_wq, arg, sizeof(struct wq_arg));
+        //msg_handler->cb(r, buf, len);
     } else {
         loge("no callback for this MSG ID(%d) in process_msg\n", msg_id);
         snprintf(uuid_str, sizeof(uuid_str), "%x", h->uuid_dst);
@@ -211,7 +235,7 @@ int rpcd_init(uint16_t port)
     }
     _rpcd->dict_fd2rpc = dict_new();
     _rpcd->dict_uuid2fd = dict_new();
-    wq_pool_init();
+    _rpcd->wq = wq_create();
     rpcd_group_register();
     return 0;
 }
@@ -226,6 +250,7 @@ void rpcd_deinit()
 {
     gevent_base_loop_break(_rpcd->evbase);
     gevent_base_destroy(_rpcd->evbase);
+    wq_destroy(_rpcd->wq);
 }
 
 void usage()

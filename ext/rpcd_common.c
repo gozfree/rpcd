@@ -60,11 +60,13 @@ static int on_test(struct rpc *r, void *arg, int len)
 
 static int on_shell_help(struct rpc *r, void *arg, int len)
 {
+    int ret;
     char buf[1024];
     char *cmd = (char *)arg;
     logi("on_shell_help cmd = %s\n", cmd);
     memset(buf, 0, sizeof(buf));
-    system_with_result(cmd, buf, sizeof(buf));
+    ret = system_with_result(cmd, buf, sizeof(buf));
+    loge("ret = %d, errno = %d\n", ret, errno);
     logi("send len = %d, buf: %s\n", strlen(buf), buf);
     rpc_send(r, buf, strlen(buf));
     return 0;

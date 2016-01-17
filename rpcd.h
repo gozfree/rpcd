@@ -10,6 +10,7 @@
 
 #include <libdict.h>
 #include <libgevent.h>
+#include <libworkq.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -21,6 +22,7 @@ typedef struct rpcd {
     struct gevent_base *evbase;
     dict *dict_uuid2fd;
     dict *dict_fd2rpc;
+    struct workq *wq;
 
 } rpcd_t;
 
