@@ -32,23 +32,23 @@ static int on_get_connect_list(struct rpc *r, void *arg, int len)
 {
     void *ptr;
     int num = 0;
-    struct iobuf *buf = CALLOC(1, struct iobuf);
+    struct iovec *buf = CALLOC(1, struct iovec);
     key_list *tmp, *uuids;
     dict_get_key_list(_rpcd->dict_uuid2fd, &uuids);
     for (num = 0, tmp = uuids; tmp; tmp = tmp->next, ++num) {
     }
-    buf->len = num * MAX_UUID_LEN;
-    buf->addr = calloc(1, buf->len);
-    for (ptr = buf->addr, tmp = uuids; tmp; tmp = tmp->next, ++num) {
+    buf->iov_len = num * MAX_UUID_LEN;
+    buf->iov_base = calloc(1, buf->iov_len);
+    for (ptr = buf->iov_base, tmp = uuids; tmp; tmp = tmp->next, ++num) {
         logi("uuid list: %s\n", (tmp->key));
         len = MAX_UUID_LEN;
         memcpy(ptr, tmp->key, len);
         ptr += len;
     }
     r->send_pkt.header.msg_id = RPC_GET_CONNECT_LIST;
-    r->send_pkt.header.payload_len = buf->len;
-    logi("rpc_send len = %d, buf = %s\n", buf->len, buf->addr);
-    rpc_send(r, buf->addr, buf->len);
+    r->send_pkt.header.payload_len = buf->iov_len;
+    logi("rpc_send len = %d, buf = %s\n", buf->iov_len, buf->iov_base);
+    rpc_send(r, buf->iov_base, buf->iov_len);
     return 0;
 }
 
