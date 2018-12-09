@@ -14,11 +14,10 @@
 #include <errno.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-#include <libgzf.h>
 #include <liblog.h>
 #include <libosal.h>
 #include <libgevent.h>
-#include <libdict.h>
+#include <libhash.h>
 #include <libskt.h>
 #include <libworkq.h>
 #include <librpc.h>
@@ -34,9 +33,13 @@ static int on_get_connect_list(struct rpc *r, void *arg, int len)
     int num = 0;
     struct iovec *buf = CALLOC(1, struct iovec);
     key_list *tmp, *uuids;
+#if 0
     dict_get_key_list(_rpcd->dict_uuid2fd, &uuids);
     for (num = 0, tmp = uuids; tmp; tmp = tmp->next, ++num) {
     }
+#else
+    uuids = NULL;
+#endif
     buf->iov_len = num * MAX_UUID_LEN;
     buf->iov_base = calloc(1, buf->iov_len);
     for (ptr = buf->iov_base, tmp = uuids; tmp; tmp = tmp->next, ++num) {
@@ -80,9 +83,9 @@ static int on_peer_post_msg(struct rpc *r, void *arg, int len)
     snprintf(uuid_dst, sizeof(uuid_dst), "%x", r->recv_pkt.header.uuid_dst);
 
     logi("post msg from %s to %s\n", uuid_src, uuid_dst);
-    char *valfd = (char *)dict_get(_rpcd->dict_uuid2fd, uuid_dst, NULL);
+    char *valfd = (char *)hash_get(_rpcd->dict_uuid2fd, uuid_dst);
     if (!valfd) {
-        loge("dict_get failed: key=%08x\n", r->send_pkt.header.uuid_dst);
+        loge("hash_get failed: key=%08x\n", r->send_pkt.header.uuid_dst);
         return -1;
     }
     int dst_fd = strtol(valfd, NULL, 16);

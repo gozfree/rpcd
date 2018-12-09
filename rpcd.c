@@ -5,6 +5,15 @@
  * created: 2015-07-20 00:01
  * updated: 2015-08-02 17:44
  *****************************************************************************/
+#include <libmacro.h>
+#include <liblog.h>
+#include <libgevent.h>
+#include <libhash.h>
+#include <libskt.h>
+#include <libworkq.h>
+#include <librpc.h>
+#include "rpcd.h"
+#include "ext/rpcd_common.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -15,15 +24,7 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <arpa/inet.h>
-#include <libgzf.h>
-#include <liblog.h>
-#include <libgevent.h>
-#include <libdict.h>
-#include <libskt.h>
-#include <libworkq.h>
-#include <librpc.h>
-#include "rpcd.h"
-#include "ext/rpcd_common.h"
+
 
 #define MAX_UUID_LEN                (21)
 #define RPCD_LISTEN_PORT    12345
@@ -69,9 +70,9 @@ static int do_process_msg(struct rpc *r, void *buf, size_t len)
     } else {
         loge("no callback for this MSG ID(%d) in process_msg\n", msg_id);
         snprintf(uuid_str, sizeof(uuid_str), "%x", h->uuid_dst);
-        char *valfd = (char *)dict_get(_rpcd->dict_uuid2fd, uuid_str, NULL);
+        char *valfd = (char *)hash_get(_rpcd->dict_uuid2fd, uuid_str);
         if (!valfd) {
-            loge("dict_get failed: key=%s\n", h->uuid_dst);
+            loge("hash_get failed: key=%s\n", h->uuid_dst);
             return -1;
         }
         int dst_fd = strtol(valfd, NULL, 16);
@@ -86,9 +87,9 @@ void on_recv(int fd, void *arg)
     struct iovec *buf;
     char key[9];
     snprintf(key, sizeof(key), "%08x", fd);
-    struct rpc *r = (struct rpc *)dict_get(_rpcd->dict_fd2rpc, key, NULL);
+    struct rpc *r = (struct rpc *)hash_get(_rpcd->dict_fd2rpc, key);
     if (!r) {
-        loge("dict_get failed: key=%s", key);
+        loge("hash_get failed: key=%s", key);
         return;
     }
     buf = rpc_recv_buf(r);
@@ -122,8 +123,8 @@ int rpcd_connect_add(struct rpcd *rpcd, struct rpc *r, int fd, uint32_t uuid)
     snprintf(fd_str, sizeof(fd_str), "%08x", fd);
     snprintf(uuid_str, sizeof(uuid_str), "%08x", uuid);
     snprintf(fdval, 9, "%08x", fd);
-    dict_add(rpcd->dict_fd2rpc, fd_str, (char *)r);
-    dict_add(rpcd->dict_uuid2fd, uuid_str, fdval);
+    hash_set(rpcd->dict_fd2rpc, fd_str, (char *)r);
+    hash_set(rpcd->dict_uuid2fd, uuid_str, fdval);
     logd("add connection fd:%s, uuid:%s\n", fd_str, uuid_str);
     return 0;
 }
@@ -134,8 +135,8 @@ int rpcd_connect_del(struct rpcd *rpcd, int fd, uint32_t uuid)
     char fd_str[9];
     snprintf(fd_str, sizeof(fd_str), "%08x", fd);
     snprintf(uuid_str, sizeof(uuid_str), "%08x", uuid);
-    dict_del(rpcd->dict_fd2rpc, fd_str);
-    dict_del(rpcd->dict_uuid2fd, uuid_str);
+    hash_del(rpcd->dict_fd2rpc, fd_str);
+    hash_del(rpcd->dict_uuid2fd, uuid_str);
     logd("delete connection fd:%s, uuid:%s\n", fd_str, uuid_str);
     return 0;
 }
@@ -155,7 +156,7 @@ struct rpc *rpc_connect_create(struct rpcd *rpcd,
     }
     r->fd = fd;
     create_uuid(uuid, MAX_UUID_LEN, fd, ip, port);
-    uuid_hash = hash_murmur(uuid, sizeof(uuid));
+    uuid_hash = hash_gen32(uuid, sizeof(uuid));
     struct gevent *e = gevent_create(fd, on_recv, NULL, on_error, (void *)r);
     if (-1 == gevent_add(rpcd->evbase, e)) {
         loge("event_add failed!\n");
@@ -210,7 +211,7 @@ void on_connect(int fd, void *arg)
 int rpcd_init(uint16_t port)
 {
     int fd;
-    fd = skt_tcp_bind_listen(NULL, port, 1);
+    fd = skt_tcp_bind_listen(NULL, port);
     if (fd == -1) {
         loge("skt_tcp_bind_listen port:%d failed!\n", port);
         return -1;
@@ -233,8 +234,8 @@ int rpcd_init(uint16_t port)
         loge("event_add failed!\n");
         gevent_destroy(e);
     }
-    _rpcd->dict_fd2rpc = dict_new();
-    _rpcd->dict_uuid2fd = dict_new();
+    _rpcd->dict_fd2rpc = hash_create(10240);
+    _rpcd->dict_uuid2fd = hash_create(10240);
     _rpcd->wq = wq_create();
     rpcd_group_register();
     return 0;

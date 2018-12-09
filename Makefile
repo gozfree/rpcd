@@ -42,15 +42,15 @@ LDFLAGS	:= $($(ARCH)_LDFLAGS)
 LDFLAGS	+= -pthread
 LDFLAGS	+= -lgcc_s -lc
 LDFLAGS += -L$(OUTPUT)/lib
-LDFLAGS	+= -lgzf
 LDFLAGS	+= -llog
 LDFLAGS	+= -lgevent
 LDFLAGS	+= -lskt
-LDFLAGS	+= -ldict
+LDFLAGS	+= -lhash
 LDFLAGS	+= -lworkq
 LDFLAGS	+= -lrpc
 LDFLAGS	+= -losal
 LDFLAGS	+= -lthread
+LDFLAGS	+= -llock
 
 .PHONY : all clean
 

@@ -8,6 +8,8 @@
 #ifndef _RPCD_H_
 #define _RPCD_H_
 
+#include <libhash.h>
+#include <libmacro.h>
 #include <libdict.h>
 #include <libgevent.h>
 #include <libworkq.h>
@@ -20,8 +22,8 @@ extern "C" {
 typedef struct rpcd {
     int listen_fd;
     struct gevent_base *evbase;
-    dict *dict_uuid2fd;
-    dict *dict_fd2rpc;
+    struct hash *dict_uuid2fd;
+    struct hash *dict_fd2rpc;
     struct workq *wq;
 
 } rpcd_t;
