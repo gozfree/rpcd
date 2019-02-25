@@ -33,7 +33,7 @@ endif
 ########
 TGT_APP 	= rpcd
 OBJS_APP    	= ${TGT_APP}.o
-OBJS_APP   	+= engine.o ext/rpcd_common.o
+OBJS_APP   	+= ext/rpcd_common.o
 
 CFLAGS	:= -g -Wall -Werror -fPIC
 CFLAGS	+= -I$(OUTPUT)/include -I./
@@ -41,16 +41,7 @@ CFLAGS	+= -I$(OUTPUT)/include -I./
 LDFLAGS	:= $($(ARCH)_LDFLAGS)
 LDFLAGS	+= -pthread
 LDFLAGS	+= -lgcc_s -lc
-LDFLAGS += -L$(OUTPUT)/lib
-LDFLAGS	+= -llog
-LDFLAGS	+= -lgevent
-LDFLAGS	+= -lskt
-LDFLAGS	+= -lhash
-LDFLAGS	+= -lworkq
-LDFLAGS	+= -lrpc
-LDFLAGS	+= -losal
-LDFLAGS	+= -lthread
-LDFLAGS	+= -llock
+LDFLAGS	+= -L$(OUTPUT)/lib -lrpc -lgevent -lworkq -lhash -lskt -lthread -llock -ltime -losal -llog -lrt
 
 .PHONY : all clean
 

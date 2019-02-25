@@ -2,8 +2,7 @@
 This is a simple rpc server.
 
 
-##Dependency
-* [libgzf](https://github.com/gozfree/libraries/tree/master/libgzf)
+## Dependency
 * [liblog](https://github.com/gozfree/libraries/tree/master/liblog)
 * [libgevent](https://github.com/gozfree/libraries/tree/master/libgevent)
 * [libskt](https://github.com/gozfree/libraries/tree/master/libskt)
